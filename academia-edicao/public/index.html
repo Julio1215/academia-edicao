@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academia de Edição — Do Zero ao Profissional</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-eyebrow">Academia de Edição 2025</div>
+    <h1 class="hero-title">DO ZERO AO<br><span class="glow">PROFISSIONAL</span><br><span class="dim">EM VÍDEO</span></h1>
+    <p class="hero-sub">busca inteligente com YouTube em tempo real<br>autocomplete, carregamento incremental e player estável<br>assista sem sair da página</p>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-label">Busca Inteligente</div>
+    <div class="search-row">
+      <input class="search-input" id="searchInput" placeholder="Ex: intro glitch After Effects, corte rápido no Premiere, transição CapCut..." autocomplete="off">
+      <button class="search-btn" id="searchBtn">Buscar</button>
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+  </div>
+
+  <div class="controls" id="tabs">
+    <button class="tab on" data-filter="all">Todos</button>
+    <button class="tab" data-filter="ae">After Effects</button>
+    <button class="tab" data-filter="pr">Premiere Pro</button>
+    <button class="tab" data-filter="cc">CapCut</button>
+    <span class="ctrl-count" id="ctrlCount"></span>
+    <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="vbtn on" data-view="list">Lista</button>
+      <button class="vbtn" data-view="grid">Grade</button>
+    </div>
+  </div>
+
+  <div class="content" id="mainContent"></div>
+
+  <div class="footer">
+    <span class="footer-note">YouTube em tempo real · player embutido · fallback automático</span>
+    <span class="footer-api">modo gratuito sem Claude</span>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <div class="modal-bar">
+        <div class="modal-title" id="modalTitle"></div>
+        <button class="modal-close" id="modalClose">fechar</button>
+      </div>
+      <div class="modal-embed" id="playerMount"></div>
+      <div class="modal-meta">
+        <span class="modal-ch" id="modalCh"></span>
+        <a class="modal-yt" id="modalLink" target="_blank" rel="noopener">ver no YouTube</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
