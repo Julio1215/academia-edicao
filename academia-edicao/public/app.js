@@ -12,9 +12,9 @@ const APPLABEL = { ae: "AE", pr: "PR", cc: "CC" };
 const APPPIP = { ae: "pip-ae", pr: "pip-pr", cc: "pip-cc" };
 
 const BASE_CATALOG = [
-  { id: "ae-ini", app: "ae", icon: "AE", name: "AE Primeiros Passos", desc: "Interface, composições, atalhos e workflow inicial.", query: "after effects iniciante tutorial português" },
-  { id: "pr-ini", app: "pr", icon: "PR", name: "Premiere Primeiros Passos", desc: "Interface, bins, sequência e corte básico.", query: "premiere pro iniciante tutorial português" },
-  { id: "cc-ini", app: "cc", icon: "CC", name: "CapCut Primeiros Passos", desc: "Interface, corte, legenda e exportação.", query: "capcut tutorial iniciante português" }
+  { id: "ae-ini", app: "ae", icon: "AE", name: "AE Primeiros Passos", desc: "Interface, composições, atalhos e workflow inicial.", query: "after effects tutorial curso gratuito" },
+  { id: "pr-ini", app: "pr", icon: "PR", name: "Premiere Primeiros Passos", desc: "Interface, bins, sequência e corte básico.", query: "premiere pro tutorial curso gratuito" },
+  { id: "cc-ini", app: "cc", icon: "CC", name: "CapCut Primeiros Passos", desc: "Interface, corte, legenda e exportação.", query: "capcut tutorial curso gratuito" }
 ];
 
 const $ = (s) => document.querySelector(s);
@@ -86,6 +86,7 @@ async function loadCategory(cat) {
 
 async function renderCategories() {
   renderShell();
+  // FILTRA categorias pela seleção
   const cats = BASE_CATALOG.filter((c) => state.filter === "all" || c.app === state.filter);
 
   for (const cat of cats) {
@@ -96,11 +97,20 @@ async function renderCategories() {
       : `<div style="padding:14px;color:var(--sub);font-family:'JetBrains Mono',monospace">nenhum vídeo encontrado</div>`;
     $("#ct-" + cat.id).textContent = `${items.length} aulas`;
   }
+  
+  // Se filtrar e não mostrar nada, avisa
+  if (cats.length === 0) {
+    $("#mainContent").innerHTML = `<div style="padding:14px;color:var(--sub);font-family:'JetBrains Mono',monospace">Nenhuma categoria encontrada.</div>`;
+  }
 }
 
 async function doSearch(q) {
   state.query = q;
   $("#ctrlCount").textContent = "buscando...";
+  
+  // LIMPA cache da busca para não usar dados antigos
+  const cacheKeys = Array.from(state.cache.keys()).filter(k => k.includes("busca"));
+  cacheKeys.forEach(k => state.cache.delete(k));
 
   const ai = await apiJson(`/api/ai/search?q=${encodeURIComponent(q)}`).catch(() => ({ queries: [q] }));
   const searchQueries = (ai.queries && ai.queries.length ? ai.queries : [q]).slice(0, 5);
@@ -126,7 +136,7 @@ async function doSearch(q) {
         <div class="cat-meta"><span>${dedup.length} resultados</span></div>
       </div>
       <div class="cards-wrap ${state.view === "grid" ? "g-view" : "l-view"}" id="searchResults">
-        ${dedup.map((v) => cardHTML(v, "ae")).join("") || `<div style="padding:14px;color:var(--sub);font-family:'JetBrains Mono',monospace">Nenhum resultado encontrado.</div>`}
+        ${dedup.length ? dedup.map((v) => cardHTML(v, "ae")).join("") : `<div style="padding:14px;color:var(--sub);font-family:'JetBrains Mono',monospace">Nenhum resultado encontrado.</div>`}
       </div>
     </section>`;
 
@@ -160,60 +170,53 @@ function openPlayer(id, title, ch) {
   $("#modalCh").textContent = ch || "";
   $("#modalLink").href = `https://www.youtube.com/watch?v=${id}`;
   $("#modal").classList.add("open");
-  $("#playerMount").innerHTML = `<div class="player-shell">carregando player...</div>`;
+  
+  const ytUrl = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+  
+  const iframe = document.createElement("iframe");
+  iframe.id = "videoFrame";
+  iframe.src = ytUrl;
+  iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  iframe.allowFullscreen = true;
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
+  iframe.style = "position:absolute;inset:0;width:100%;height:100%;border:none;";
+  
+  $("#playerMount").innerHTML = "";
+  $("#playerMount").appendChild(iframe);
 
-  if (state.currentPlayer && state.currentPlayer.destroy) {
+  // Detecta bloqueio após 3 segundos
+  setTimeout(() => {
+    const frame = document.getElementById("videoFrame");
+    if (!frame) return;
+    
+    let blocked = false;
     try {
-      state.currentPlayer.destroy();
-    } catch {}
-  }
-
-  const tryPlay = (videoId) => {
-    $("#playerMount").innerHTML = `<div id="ytPlayer"></div>`;
-
-    if (!window.YT || !YT.Player) {
-      $("#playerMount").innerHTML = `
-        <iframe
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen
-          referrerpolicy="strict-origin-when-cross-origin"
-        ></iframe>`;
-      return;
-    }
-
-    state.currentPlayer = new YT.Player("ytPlayer", {
-      videoId,
-      width: "100%",
-      height: "100%",
-      playerVars: {
-        autoplay: 1,
-        rel: 0,
-        modestbranding: 1,
-        playsinline: 1,
-        enablejsapi: 1,
-        origin: location.origin,
-        referrerPolicy: "strict-origin-when-cross-origin"
-      },
-      events: {
-        onError: () => {
-          $("#playerMount").innerHTML = `<div class="player-shell">Este vídeo bloqueou incorporação.</div>`;
-        }
+      if (!frame.contentWindow) {
+        blocked = true;
       }
-    });
-  };
+    } catch {
+      blocked = true;
+    }
+    
+    if (blocked) {
+      showBlockedAndOpen(id, title);
+    }
+  }, 3000);
+}
 
-  try {
-    tryPlay(id);
-  } catch {
-    $("#playerMount").innerHTML = `
-      <iframe
-        src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-        referrerpolicy="strict-origin-when-cross-origin"
-      ></iframe>`;
-  }
+function showBlockedAndOpen(id, title) {
+  const msg = `
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#000;color:#ede8ff;font-family:'JetBrains Mono',monospace;text-align:center;padding:24px;flex-direction:column;gap:12px">
+      <div style="font-size:16px;color:#b44eff">Este vídeo bloqueou incorporação.</div>
+      <div style="font-size:12px;color:#8a7aaa">Abrindo automaticamente no YouTube...</div>
+    </div>
+  `;
+  $("#playerMount").innerHTML = msg;
+  toast("Vídeo bloqueado — abrindo no YouTube");
+  
+  setTimeout(() => {
+    window.open(`https://www.youtube.com/watch?v=${id}`, "_blank");
+  }, 500);
 }
 
 function closeModal() {
@@ -236,6 +239,7 @@ $("#modal").addEventListener("click", (e) => {
   if (e.target === $("#modal")) closeModal();
 });
 
+// FILTRO de categorias
 $("#tabs").addEventListener("click", (e) => {
   const tab = e.target.closest(".tab");
   const vbtn = e.target.closest(".vbtn");
@@ -244,13 +248,16 @@ $("#tabs").addEventListener("click", (e) => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.remove("on"));
     tab.classList.add("on");
     state.filter = tab.dataset.filter;
-    renderCategories();
+    state.query = ""; // LIMPA busca quando muda filtro
+    $("#searchInput").value = "";
+    renderCategories(); // Recarrega categorias
   }
 
   if (vbtn) {
     document.querySelectorAll(".vbtn").forEach((x) => x.classList.remove("on"));
     vbtn.classList.add("on");
     state.view = vbtn.dataset.view;
+    // Se tem busca, recarrega busca; se não, recarrega categorias
     state.query ? doSearch(state.query) : renderCategories();
   }
 });
@@ -268,6 +275,7 @@ $("#searchInput").addEventListener("keydown", (e) => {
   }
 });
 
+// Autocomplete e busca incremental
 $("#searchInput").addEventListener("input", () => {
   clearTimeout(state.suggestionsTimer);
   clearTimeout(state.searchTimer);
@@ -282,4 +290,5 @@ $("#searchInput").addEventListener("input", () => {
 
 window.onYouTubeIframeAPIReady = () => {};
 
+// CARREGA categorias inicialmente
 renderCategories();

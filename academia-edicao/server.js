@@ -10,11 +10,25 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
+// Helmet com CSP customizado (sintaxe compatível)
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'", "https://www.youtube.com", "https://www.googletagmanager.com"],
+  scriptSrcElem: ["'self'", "'unsafe-inline'", "https://www.youtube.com"],
+  imgSrc: ["'self'", "data:", "https://img.youtube.com", "https://i.ytimg.com", "https://www.youtube.com"],
+  frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"],
+  frameAncestors: ["'self'", "https://www.youtube.com"],
+  connectSrc: ["'self'", "https://www.googleapis.com", "https://www.youtube.com"]
+};
+
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+    contentSecurityPolicy: {
+      directives: cspDirectives
+    }
   })
 );
+
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("combined"));
@@ -53,40 +67,39 @@ async function fetchJson(url, options = {}) {
 
 function buildSearchQueries(prompt) {
   const q = normalizeQuery(prompt).toLowerCase();
-
   const has = (...terms) => terms.some((t) => q.includes(t));
   const base = [];
 
   if (has("after effects", "ae", "motion", "glitch", "texto", "intro", "vinheta")) {
-    base.push("after effects tutorial português");
+    base.push("after effects tutorial curso gratuito");
   }
   if (has("premiere", "pr", "corte", "timeline", "legenda", "color", "edição")) {
-    base.push("premiere pro tutorial português");
+    base.push("premiere pro tutorial curso gratuito");
   }
   if (has("capcut", "mobile", "celular", "reels", "shorts", "legenda")) {
-    base.push("capcut tutorial português");
+    base.push("capcut tutorial curso gratuito");
   }
   if (has("transição", "transition", "efeito", "glow", "shake", "zoom")) {
-    base.push("efeitos de transição vídeo tutorial português");
+    base.push("transição vídeo tutorial curso gratuito");
   }
   if (has("color", "cor", "lut", "gradação", "correção")) {
-    base.push("correção de cor premiere tutorial português");
+    base.push("correção de cor tutorial curso gratuito");
   }
   if (has("legenda", "subtitle", "caption", "srt", "texto animado")) {
-    base.push("legendas animadas vídeo tutorial português");
+    base.push("legenda vídeo tutorial curso gratuito");
   }
   if (has("thumbnail", "thumb", "miniatura")) {
-    base.push("thumbnail vídeo tutorial português");
+    base.push("thumbnail tutorial curso gratuito");
   }
   if (has("exportar", "render", "codec", "mp4", "qualidade")) {
-    base.push("exportar vídeo tutorial português");
+    base.push("exportar vídeo tutorial curso gratuito");
   }
 
   if (!base.length) {
     base.push(
-      "edição de vídeo tutorial português",
-      "motion design tutorial português",
-      "after effects premiere capcut tutorial português"
+      "edição de vídeo tutorial curso gratuito",
+      "motion design tutorial curso gratuito",
+      "after effects premiere capcut tutorial curso gratuito"
     );
   }
 
@@ -166,7 +179,8 @@ app.get("/api/youtube/search", async (req, res) => {
 
     setCache(cacheKey, payload, CACHE_TTL);
     res.json(payload);
-  } catch {
+  } catch (err) {
+    console.error("Erro na busca YouTube:", err);
     res.status(200).json({
       items: [],
       nextPageToken: null,
