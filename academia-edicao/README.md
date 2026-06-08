@@ -1,92 +1,48 @@
-# Academia de Edição — Do Zero ao Profissional em Vídeo
+# Academia de Edição
 
-Plataforma de busca e reprodução de conteúdos do YouTube sobre edição de vídeo, com foco em **After Effects**, **Premiere Pro** e **CapCut**.
+Plataforma de busca e reprodução de conteúdo do YouTube sobre edição de vídeo.
+
+## Setup no GitHub Codespace
+
+### 1. Configure as variáveis de ambiente
+```bash
+cp .env.example .env
+# Edite .env e adicione sua YOUTUBE_API_KEY
+```
+
+### 2. Como obter a YouTube API Key
+1. Acesse https://console.developers.google.com
+2. Crie um projeto
+3. Ative **YouTube Data API v3**
+4. Crie uma credencial → **Chave de API**
+5. Cole no `.env`
+
+### 3. Instale dependências e rode
+```bash
+npm install
+npm start
+```
+
+O servidor sobe na porta `4000`. No Codespace, aparecerá um link para abrir no navegador.
 
 ## Funcionalidades
 
-- **Busca inteligente** com YouTube em tempo real
-- **Autocomplete** de sugestões enquanto digita
-- **Carregamento incremental** de vídeos
-- **Player embutido** — assiste sem sair da página
-- **Fallback automático** se o vídeo bloquear incorporação
-- **Modo gratuito** sem necessidade de Claude ou APIs caras
+- **Busca real no YouTube** — pesquise qualquer tema de edição de vídeo
+- **Autocomplete** — sugestões ao digitar
+- **Chips de busca rápida** — tópicos populares com 1 clique
+- **30 tópicos** carregados automaticamente (AE, Premiere, CapCut)
+- **Player embutido** com auto-substituição de vídeos bloqueados
+- **Barra de progresso** — marque aulas como concluídas (salvo localmente)
+- **Filtros por software** — After Effects, Premiere Pro, CapCut
+- **Vista lista / grade**
 
-## Tecnologias
-
-- **Node.js** com Express (servidor)
-- **YouTube Data API v3** (busca de vídeos)
-- **Google Suggest API** (autocomplete)
-- **HTML5 + CSS3 + JavaScript (ES2020)**
-- **CORS, Helmet, Morgan, dotenv**
-
-## Instalação
-
-1. Clone o repositório:
-
-   ```bash
-   git clone https://github.com/Julio1215/academia-edicao.git
-   cd academia-edicao
-   ```
-
-2. Instale as dependências:
-
-   ```bash
-   npm install
-   ```
-
-3. Configure o `.env`:
-
-   ```env
-   PORT=4000
-   YOUTUBE_API_KEY=sua_chave_youtube
-   ```
-
-   Substitua `sua_chave_youtube` pela chave real da YouTube Data API.
-
-4. Rodar o servidor:
-
-   ```bash
-   node server.js
-   ```
-
-5. Acesse no navegador:
-
-   ```text
-   http://localhost:4000
-   ```
-
-## Estrutura do Projeto
-
-```bash
-academia-edicao/
-  package.json
-  server.js
-  .env
-  public/
-    index.html
-    styles.css
-    app.js
+## Estrutura
 ```
-
-## Uso
-
-- Digite termos como:
-  - `intro glitch After Effects`
-  - `corte rápido no Premiere`
-  - `transição CapCut`
-- Navegue pelas categorias:
-  - **Todos**
-  - **After Effects**
-  - **Premiere Pro**
-  - **CapCut**
-- Altere visualização:
-  - **Lista**
-  - **Grade**
-
-## Autor
-
-Julio1215
-
-## Licença
-
-Projeto pessoal para estudo e prática.
+├── server.js          # Backend Express + rotas API
+├── public/
+│   ├── index.html     # HTML principal
+│   ├── app.js         # Frontend (sem framework)
+│   └── styles.css     # Estilos neon dark
+├── .env.example       # Template de variáveis
+└── package.json
+```

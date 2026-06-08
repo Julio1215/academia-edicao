@@ -67,43 +67,84 @@ async function fetchJson(url, options = {}) {
 
 function buildSearchQueries(prompt) {
   const q = normalizeQuery(prompt).toLowerCase();
-  const has = (...terms) => terms.some((t) => q.includes(t));
-  const base = [];
+  const has = (...terms) => terms.some(t => q.includes(t));
+  const queries = new Set();
 
-  if (has("after effects", "ae", "motion", "glitch", "texto", "intro", "vinheta")) {
-    base.push("after effects tutorial curso gratuito");
-  }
-  if (has("premiere", "pr", "corte", "timeline", "legenda", "color", "edição")) {
-    base.push("premiere pro tutorial curso gratuito");
-  }
-  if (has("capcut", "mobile", "celular", "reels", "shorts", "legenda")) {
-    base.push("capcut tutorial curso gratuito");
-  }
-  if (has("transição", "transition", "efeito", "glow", "shake", "zoom")) {
-    base.push("transição vídeo tutorial curso gratuito");
-  }
-  if (has("color", "cor", "lut", "gradação", "correção")) {
-    base.push("correção de cor tutorial curso gratuito");
-  }
-  if (has("legenda", "subtitle", "caption", "srt", "texto animado")) {
-    base.push("legenda vídeo tutorial curso gratuito");
-  }
-  if (has("thumbnail", "thumb", "miniatura")) {
-    base.push("thumbnail tutorial curso gratuito");
-  }
-  if (has("exportar", "render", "codec", "mp4", "qualidade")) {
-    base.push("exportar vídeo tutorial curso gratuito");
+  // Sempre inclui a busca original do usuário como primeira query
+  queries.add(q + ' tutorial português');
+
+  // After Effects
+  if (has('after effects','ae ','after effect','motion design','motion graphics','vinheta','intro'))
+    queries.add('after effects tutorial português 2024');
+  if (has('keyframe','keyframes','animação','animar','easing','timing','spacing'))
+    queries.add('after effects keyframes animação tutorial português');
+  if (has('mascara','máscara','mask','track matte','matte'))
+    queries.add('after effects mascaras track matte tutorial português');
+  if (has('shape','forma','morphing','trim path','trim paths'))
+    queries.add('after effects shape layers trim paths tutorial português');
+  if (has('tipografia','texto','text','kinetic','type'))
+    queries.add('after effects tipografia animada kinetic type português');
+  if (has('expressão','expressões','wiggle','loop','código','expression'))
+    queries.add('after effects expressões wiggle loop tutorial português');
+  if (has('chroma','fundo verde','tela verde','keying','keylight'))
+    queries.add('after effects chroma key fundo verde tutorial português');
+  if (has('vfx','particula','partícula','explosão','fogo','glitch','distorção'))
+    queries.add('after effects vfx efeitos visuais partículas tutorial português');
+  if (has('3d','camera','parallax','compositing','profundidade'))
+    queries.add('after effects compositing 3d camera tutorial português');
+  if (has('plugin','element 3d','trapcode','video copilot','optical flares'))
+    queries.add('after effects plugins element 3d trapcode tutorial português');
+  if (has('render','exportar','media encoder','codec','output'))
+    queries.add('after effects render exportar tutorial português');
+
+  // Premiere Pro
+  if (has('premiere','pr ','premiere pro','edição de vídeo','editor','editar vídeo'))
+    queries.add('premiere pro tutorial completo português 2024');
+  if (has('corte','j-cut','l-cut','ripple','multicam','montagem'))
+    queries.add('premiere pro tecnicas corte tutorial português');
+  if (has('color','cor','lumetri','lut','gradação','look','grade'))
+    queries.add('premiere pro lumetri color grading correção cor português');
+  if (has('audio','áudio','som','mix','equaliz','noise','narração','voz'))
+    queries.add('premiere pro audio mix equalizer tutorial português');
+  if (has('legenda','subtitle','caption','srt','closed caption'))
+    queries.add('premiere pro legendas subtitles tutorial português');
+  if (has('transição','dissolve','warp','speed ramp','smooth','zoom'))
+    queries.add('premiere pro transicoes transitions tutorial português');
+  if (has('stabiliz','estabiliz','optical flow','slow motion','slow-mo'))
+    queries.add('premiere pro warp stabilizer slowmotion tutorial português');
+  if (has('dynamic link','round trip','integr'))
+    queries.add('premiere after effects dynamic link tutorial português');
+  if (has('exportar','export','h264','4k','youtube','instagram'))
+    queries.add('premiere pro exportar render h264 youtube 4k português');
+
+  // CapCut
+  if (has('capcut','cap cut','celular','mobile','tiktok','reels','shorts'))
+    queries.add('capcut tutorial completo português 2024 2025');
+  if (has('beat','ritmo','sincroniz','música'))
+    queries.add('capcut corte ritmo beat sync tutorial português');
+  if (has('filtro','cor capcut','lut capcut'))
+    queries.add('capcut color grading filtros luts tutorial português');
+  if (has('ia','inteligência artificial','ai','tela verde capcut','sky replace'))
+    queries.add('capcut ferramentas ia inteligencia artificial tutorial português');
+  if (has('viral','viralizar','views','engajamento','algoritmo'))
+    queries.add('capcut reels shorts viral tutorial português 2025');
+  if (has('template','trend','tendência'))
+    queries.add('capcut templates trend tutorial português 2025');
+
+  // Genérico edição
+  if (has('edição','editar','editor de vídeo','edit'))
+    queries.add('edição de vídeo tutorial completo português 2024');
+  if (has('youtube','canal','youtuber','monetiz'))
+    queries.add('como editar vídeo para youtube tutorial português');
+
+  // Fallback se nenhuma keyword bateu: usa a própria query ampliada
+  if (queries.size === 1) {
+    queries.add(q + ' after effects tutorial português');
+    queries.add(q + ' premiere pro tutorial português');
+    queries.add(q + ' capcut tutorial português');
   }
 
-  if (!base.length) {
-    base.push(
-      "edição de vídeo tutorial curso gratuito",
-      "motion design tutorial curso gratuito",
-      "after effects premiere capcut tutorial curso gratuito"
-    );
-  }
-
-  return [...new Set(base)].slice(0, 5);
+  return [...queries].slice(0, 6);
 }
 
 app.get("/health", (_req, res) => {
@@ -150,11 +191,11 @@ app.get("/api/youtube/search", async (req, res) => {
     if (cached) return res.json(cached);
 
     const url =
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=26` +
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video` +
       `&q=${encodeURIComponent(q)}` +
       `&maxResults=${maxResults}` +
       `&relevanceLanguage=${encodeURIComponent(relevanceLanguage)}` +
-      `&regionCode=BR&safeSearch=moderate&videoEmbeddable=true` +
+      `&regionCode=BR&safeSearch=moderate&videoEmbeddable=true&order=relevance` +
       `${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}` +
       `&key=${YOUTUBE_API_KEY}`;
 
