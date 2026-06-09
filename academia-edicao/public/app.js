@@ -367,24 +367,50 @@ function loadVideo(vid) {
   showPlayerState('loading');
   const mount = el('playerMount');
   mount.style.display = 'none';
-  mount.innerHTML     = '';
+  mount.innerHTML = '';
 
   const iframe = document.createElement('iframe');
-  iframe.allow         = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
   iframe.allowFullscreen = true;
   iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;';
   iframe.src = `https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`;
 
   iframe.addEventListener('load', () => {
-    showPlayerState('none');
     mount.innerHTML = '';
     mount.appendChild(iframe);
     mount.style.display = 'block';
-    // Agenda verificação via backend (sem noembed, sem violar CSP)
-    state.player.errorTimer = setTimeout(() => checkEmbeddable(vid), 3500);
+    el('playerLoading').style.display = 'none';
+    el('playerBlocked').style.display = 'none';
+    el('playerFailed').style.display  = 'none';
+    // só verifica embed depois de 5s — tempo suficiente pro YT IFrame API responder
+    // se o vídeo já estiver tocando, o onReady vai cancelar esse timer
+    state.player.errorTimer = setTimeout(() => checkEmbeddable(vid), 5000);
   });
 
+  iframe.addEventListener('error', () => silentSwap());
   mount.appendChild(iframe);
+}
+
+async function checkEmbeddable(vid) {
+  // garante que ainda é o mesmo vídeo e que o modal ainda está aberto
+  if (state.player.vid !== vid) return;
+  if (!el('modal').classList.contains('open')) return;
+  // se o playerMount está visível com conteúdo, vídeo provavelmente está ok
+  // só troca se a API confirmar que não é embeddable
+  try {
+    const r = await fetch(`/api/youtube/embeddable?id=${encodeURIComponent(vid)}`);
+    const d = await r.json();
+    if (d.embeddable === false) silentSwap();
+    // se embeddable === true ou erro → não faz nada
+  } catch {
+    // erro na rota — não interrompe a reprodução
+  }
+}
+
+function showPlayerState(s) {
+  el('playerLoading').style.display = s === 'loading' ? 'flex' : 'none';
+  el('playerBlocked').style.display = s === 'blocked' ? 'flex' : 'none';
+  el('playerFailed').style.display  = s === 'failed'  ? 'flex' : 'none';
 }
 
 // Verifica via BACKEND se o vídeo permite embed — não chama noembed.com diretamente
