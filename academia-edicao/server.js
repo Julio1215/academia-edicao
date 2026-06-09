@@ -63,6 +63,47 @@ function setCache(key, value, ttl = CACHE_TTL) {
 // ── HELPERS ──────────────────────────────────────────────────────────
 function normalizeQuery(q = "") { return String(q).trim().slice(0, 200); }
 
+// Mock data for YouTube search
+function mockYouTubeSearch() {
+  return {
+    items: [
+      {
+        id: "dQw4w9WgXcQ",
+        title: "Rick Astley - Never Gonna Give You Up (Official Music Video)",
+        channelTitle: "RickAstleyVEVO",
+        description: "The official video for \"Never Gonna Give You Up\" by Rick Astley. ",
+        publishedAt: "2009-10-25T06:57:33Z",
+        thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
+      },
+      {
+        id: "xvFZjo5PgG0",
+        title: "After Effects Tutorial for Beginners - 2024",
+        channelTitle: "Adobe Creative Cloud",
+        description: "Learn the basics of After Effects in this comprehensive tutorial for beginners.",
+        publishedAt: "2024-01-15T10:00:00Z",
+        thumbnail: "https://i.ytimg.com/vi/xvFZjo5PgG0/mqdefault.jpg",
+      },
+      {
+        id: "s_f3G2f132Q",
+        title: "Premiere Pro Tutorial: Basic Editing for Beginners",
+        channelTitle: "Justin Odisho",
+        description: "A quick guide to getting started with video editing in Adobe Premiere Pro.",
+        publishedAt: "2023-11-01T09:00:00Z",
+        thumbnail: "https://i.ytimg.com/vi/s_f3G2f132Q/mqdefault.jpg",
+      },
+      {
+        id: "L0W-l_gG0_Y",
+        title: "CapCut Tutorial: How to Edit Videos on Mobile",
+        channelTitle: "CapCut Official",
+        description: "Master CapCut with this easy-to-follow mobile editing tutorial.",
+        publishedAt: "2024-02-20T11:30:00Z",
+        thumbnail: "https://i.ytimg.com/vi/L0W-l_gG0_Y/mqdefault.jpg",
+      },
+    ],
+    nextPageToken: null,
+  };
+}
+
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
   const data = await res.json().catch(() => ({}));
@@ -164,8 +205,10 @@ app.get("/api/suggest", async (req, res) => {
 // Busca de vídeos no YouTube
 app.get("/api/youtube/search", async (req, res) => {
   try {
-    if (!YOUTUBE_API_KEY)
-      return res.status(500).json({ error: "YOUTUBE_API_KEY não configurada. Crie o arquivo .env" });
+    if (!YOUTUBE_API_KEY) {
+      console.warn("⚠  YOUTUBE_API_KEY não encontrada ou inválida. Usando dados mock.");
+      return res.json(mockYouTubeSearch());
+    }
 
     const q            = normalizeQuery(req.query.q);
     const pageToken    = normalizeQuery(req.query.pageToken);
@@ -205,6 +248,11 @@ app.get("/api/youtube/search", async (req, res) => {
     res.json(payload);
   } catch (err) {
     console.error("Erro YouTube search:", err.message);
+    console.error("Erro YouTube search:", err.message);
+    if (err.message.includes("Quota exceeded")) {
+      console.warn("⚠  Cota da API do YouTube excedida. Usando dados mock.");
+      return res.json(mockYouTubeSearch());
+    }
     res.json({ items: [], nextPageToken: null, error: err.message });
   }
 });
