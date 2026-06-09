@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-//  ACADEMIA DE EDIÇÃO — app.js  (sem chamadas externas bloqueadas por CSP)
+//  ACADEMIA DE EDIÇÃO — app.js (Corrigido)
 // ═══════════════════════════════════════════════════════════════════
 
 const state = {
@@ -39,10 +39,16 @@ function refreshProgress() {
   const cards = document.querySelectorAll('.card[data-vid]').length;
   const total = Math.max(cards, done, 1);
   const pct   = Math.min(Math.round((done / total) * 100), 100);
-  el('pbFill').style.width  = pct + '%';
-  el('pbPct').textContent   = pct + '%';
-  el('pbSub').textContent   = done === 0 ? '0 aulas concluídas' : done === 1 ? '1 aula concluída' : `${done} aulas concluídas`;
-  el('statDone').textContent = done;
+  
+  const pbFill = el('pbFill');
+  const pbPct = el('pbPct');
+  const pbSub = el('pbSub');
+  const statDone = el('statDone');
+
+  if (pbFill) pbFill.style.width = pct + '%';
+  if (pbPct) pbPct.textContent = pct + '%';
+  if (pbSub) pbSub.textContent = done === 0 ? '0 aulas concluídas' : done === 1 ? '1 aula concluída' : `${done} aulas concluídas`;
+  if (statDone) statDone.textContent = done;
 }
 
 // ── HELPERS ────────────────────────────────────────────────────────
@@ -52,6 +58,7 @@ const CACHE_TTL = 5 * 60 * 1000;
 
 function toast(msg, dur = 2800) {
   const t = el('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toast._t);
@@ -161,10 +168,12 @@ function cardHTML(v, app) {
 // ── RENDERIZA CATEGORIAS ─────────────────────────────────────────────
 async function renderCategories() {
   state.isSearchMode = false;
-  el('searchLoading').classList.remove('visible');
+  const searchLoading = el('searchLoading');
+  if (searchLoading) searchLoading.classList.remove('visible');
 
   const cats = CATALOG.filter(c => state.filter === 'all' || c.app === state.filter);
   const mc   = el('mainContent');
+  if (!mc) return;
   mc.innerHTML = '';
 
   cats.forEach(cat => {
@@ -186,8 +195,10 @@ async function renderCategories() {
     mc.appendChild(sec);
   });
 
-  el('ctrlCount').textContent = `${cats.length} tópicos`;
-  el('statCats').textContent  = cats.length;
+  const ctrlCount = el('ctrlCount');
+  const statCats = el('statCats');
+  if (ctrlCount) ctrlCount.textContent = `${cats.length} tópicos`;
+  if (statCats) statCats.textContent  = cats.length;
 
   let totalLoaded = 0;
   const chunks = [];
@@ -211,10 +222,12 @@ async function renderCategories() {
            </div>`;
       if (ctEl) ctEl.textContent = `${items.length} aulas`;
       totalLoaded += items.length;
-      el('statAulas').textContent = totalLoaded + '+';
+      const statAulas = el('statAulas');
+      if (statAulas) statAulas.textContent = totalLoaded + '+';
     }));
   }
-  el('statAulas').textContent = totalLoaded + '+';
+  const statAulasFinal = el('statAulas');
+  if (statAulasFinal) statAulasFinal.textContent = totalLoaded + '+';
   refreshProgress();
 }
 
@@ -225,17 +238,24 @@ async function doSearch(q) {
 
   state.searchQuery  = q;
   state.isSearchMode = true;
-  el('suggestions').classList.remove('open');
-  el('searchBtn').disabled = true;
-  el('searchLoading').classList.add('visible');
-  el('searchLoadingText').textContent = `Buscando "${q}" no YouTube...`;
-  el('ctrlCount').textContent = 'buscando...';
+  
+  const suggestions = el('suggestions');
+  const searchBtn = el('searchBtn');
+  const searchLoading = el('searchLoading');
+  const searchLoadingText = el('searchLoadingText');
+  const ctrlCount = el('ctrlCount');
+
+  if (suggestions) suggestions.classList.remove('open');
+  if (searchBtn) searchBtn.disabled = true;
+  if (searchLoading) searchLoading.classList.add('visible');
+  if (searchLoadingText) searchLoadingText.textContent = `Buscando "${q}" no YouTube...`;
+  if (ctrlCount) ctrlCount.textContent = 'buscando...';
 
   try {
     const aiData = await apiGet(`/api/ai/search?q=${encodeURIComponent(q)}`) || {};
     const queries = [...new Set([q, ...(aiData.queries || [])])].slice(0, 4);
 
-    el('searchLoadingText').textContent = `Encontrando vídeos (${queries.length} buscas)...`;
+    if (searchLoadingText) searchLoadingText.textContent = `Encontrando vídeos (${queries.length} buscas)...`;
 
     const all = await Promise.all(
       queries.map(query =>
@@ -260,41 +280,45 @@ async function doSearch(q) {
     const results = filtered.length >= 4 ? filtered : dedup;
 
     const mc = el('mainContent');
-    mc.innerHTML = `
-      <section class="cat-section">
-        <div class="cat-header">
-          <div class="cat-icon" style="background:rgba(180,78,255,.1);border:1px solid rgba(180,78,255,.22)">🔎</div>
-          <div>
-            <div class="cat-name" style="color:var(--neon)">Resultados para "${esc(q)}"</div>
-            <div class="cat-desc">${results.length} vídeos encontrados no YouTube agora</div>
+    if (mc) {
+      mc.innerHTML = `
+        <section class="cat-section">
+          <div class="cat-header">
+            <div class="cat-icon" style="background:rgba(180,78,255,.1);border:1px solid rgba(180,78,255,.22)">🔎</div>
+            <div>
+              <div class="cat-name" style="color:var(--neon)">Resultados para "${esc(q)}"</div>
+              <div class="cat-desc">${results.length} vídeos encontrados no YouTube agora</div>
+            </div>
+            <div class="cat-meta">
+              <button onclick="clearSearch()" style="background:none;border:1px solid var(--bord3);color:var(--sub);border-radius:3px;padding:4px 10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;">
+                ✕ limpar busca
+              </button>
+            </div>
           </div>
-          <div class="cat-meta">
-            <button onclick="clearSearch()" style="background:none;border:1px solid var(--bord3);color:var(--sub);border-radius:3px;padding:4px 10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;">
-              ✕ limpar busca
-            </button>
+          <div class="cards-wrap ${state.view === 'grid' ? 'g-view' : 'l-view'}">
+            ${results.length
+              ? results.map(v => cardHTML(v, detectApp(v))).join('')
+              : `<div class="empty-state">
+                  <div class="es-icon">🔍</div>
+                  <div class="es-title">nenhum resultado encontrado</div>
+                  <div class="es-sub">tente outros termos ou verifique a YOUTUBE_API_KEY no .env</div>
+                 </div>`}
           </div>
-        </div>
-        <div class="cards-wrap ${state.view === 'grid' ? 'g-view' : 'l-view'}">
-          ${results.length
-            ? results.map(v => cardHTML(v, detectApp(v))).join('')
-            : `<div class="empty-state">
-                <div class="es-icon">🔍</div>
-                <div class="es-title">nenhum resultado encontrado</div>
-                <div class="es-sub">tente outros termos ou verifique a YOUTUBE_API_KEY no .env</div>
-               </div>`}
-        </div>
-      </section>`;
+        </section>`;
+    }
 
-    el('ctrlCount').textContent = `${results.length} resultados`;
-    el('statAulas').textContent = results.length;
-    el('statCats').textContent  = '1 busca';
+    if (ctrlCount) ctrlCount.textContent = `${results.length} resultados`;
+    const statAulas = el('statAulas');
+    const statCats = el('statCats');
+    if (statAulas) statAulas.textContent = results.length;
+    if (statCats) statCats.textContent  = '1 busca';
     refreshProgress();
   } catch(e) {
     console.error('Search error:', e);
     toast('Erro na busca. Tente novamente.');
   } finally {
-    el('searchLoading').classList.remove('visible');
-    el('searchBtn').disabled = false;
+    if (searchLoading) searchLoading.classList.remove('visible');
+    if (searchBtn) searchBtn.disabled = false;
   }
 }
 
@@ -309,13 +333,15 @@ function detectApp(v) {
 function clearSearch() {
   state.searchQuery  = '';
   state.isSearchMode = false;
-  el('searchInput').value = '';
+  const searchInput = el('searchInput');
+  if (searchInput) searchInput.value = '';
   renderCategories();
 }
 
 // ── AUTOCOMPLETE ─────────────────────────────────────────────────────
 async function loadSuggestions(q) {
   const box = el('suggestions');
+  if (!box) return;
   if (!q || q.length < 2) { box.classList.remove('open'); return; }
   const data  = await apiGet(`/api/suggest?q=${encodeURIComponent(q)}`) || {};
   const items = (data.items || []).slice(0, 7);
@@ -324,7 +350,8 @@ async function loadSuggestions(q) {
   box.classList.add('open');
   box.querySelectorAll('.suggest-item').forEach(item => {
     item.addEventListener('click', () => {
-      el('searchInput').value = item.textContent;
+      const searchInput = el('searchInput');
+      if (searchInput) searchInput.value = item.textContent;
       box.classList.remove('open');
       doSearch(item.textContent);
     });
@@ -343,17 +370,26 @@ function openPlayer(vid, title, ch, app) {
 
   prefetchCandidates(p.query, vid);
 
-  el('modalTitle').textContent = title || 'Vídeo';
-  el('modalCh').textContent    = ch    || '';
-  el('modalLink').href         = `https://www.youtube.com/watch?v=${vid}`;
+  const modalTitle = el('modalTitle');
+  const modalCh = el('modalCh');
+  const modalLink = el('modalLink');
+  const modalDoneBtn = el('modalDoneBtn');
+  const modalDoneBadge = el('modalDoneBadge');
+  const modal = el('modal');
+
+  if (modalTitle) modalTitle.textContent = title || 'Vídeo';
+  if (modalCh) modalCh.textContent = ch || '';
+  if (modalLink) modalLink.href = `https://www.youtube.com/watch?v=${vid}`;
 
   const done = isVideoDone(vid);
-  el('modalDoneBtn').classList.toggle('marked', done);
-  el('modalDoneBtn').textContent   = done ? '✓ concluída' : '✓ marcar como concluída';
-  el('modalDoneBadge').classList.toggle('show', done);
-  el('modalDoneBtn').dataset.vid   = vid;
+  if (modalDoneBtn) {
+    modalDoneBtn.classList.toggle('marked', done);
+    modalDoneBtn.textContent = done ? '✓ concluída' : '✓ marcar como concluída';
+    modalDoneBtn.dataset.vid = vid;
+  }
+  if (modalDoneBadge) modalDoneBadge.classList.toggle('show', done);
 
-  el('modal').classList.add('open');
+  if (modal) modal.classList.add('open');
   loadVideo(vid);
 }
 
@@ -366,6 +402,7 @@ async function prefetchCandidates(query, excludeVid) {
 function loadVideo(vid) {
   showPlayerState('loading');
   const mount = el('playerMount');
+  if (!mount) return;
   mount.style.display = 'none';
   mount.innerHTML = '';
 
@@ -379,11 +416,15 @@ function loadVideo(vid) {
     mount.innerHTML = '';
     mount.appendChild(iframe);
     mount.style.display = 'block';
-    el('playerLoading').style.display = 'none';
-    el('playerBlocked').style.display = 'none';
-    el('playerFailed').style.display  = 'none';
-    // só verifica embed depois de 5s — tempo suficiente pro YT IFrame API responder
-    // se o vídeo já estiver tocando, o onReady vai cancelar esse timer
+    
+    const playerLoading = el('playerLoading');
+    const playerBlocked = el('playerBlocked');
+    const playerFailed = el('playerFailed');
+
+    if (playerLoading) playerLoading.style.display = 'none';
+    if (playerBlocked) playerBlocked.style.display = 'none';
+    if (playerFailed) playerFailed.style.display  = 'none';
+    
     state.player.errorTimer = setTimeout(() => checkEmbeddable(vid), 5000);
   });
 
@@ -392,37 +433,29 @@ function loadVideo(vid) {
 }
 
 async function checkEmbeddable(vid) {
-  // garante que ainda é o mesmo vídeo e que o modal ainda está aberto
   if (state.player.vid !== vid) return;
-  if (!el('modal').classList.contains('open')) return;
-  // se o playerMount está visível com conteúdo, vídeo provavelmente está ok
-  // só troca se a API confirmar que não é embeddable
+  const modal = el('modal');
+  if (!modal || !modal.classList.contains('open')) return;
+  
   try {
     const r = await fetch(`/api/youtube/embeddable?id=${encodeURIComponent(vid)}`);
     const d = await r.json();
     if (d.embeddable === false) silentSwap();
-    // se embeddable === true ou erro → não faz nada
-  } catch {
-    // erro na rota — não interrompe a reprodução
+  } catch (e) {
+    console.warn('[checkEmbeddable]', e);
   }
 }
 
 function showPlayerState(s) {
-  el('playerLoading').style.display = s === 'loading' ? 'flex' : 'none';
-  el('playerBlocked').style.display = s === 'blocked' ? 'flex' : 'none';
-  el('playerFailed').style.display  = s === 'failed'  ? 'flex' : 'none';
-}
+  const playerLoading = el('playerLoading');
+  const playerBlocked = el('playerBlocked');
+  const playerFailed = el('playerFailed');
+  const playerMount = el('playerMount');
 
-// Verifica via BACKEND se o vídeo permite embed — não chama noembed.com diretamente
-async function checkEmbeddable(vid) {
-  if (state.player.vid !== vid) return;
-  try {
-    const r = await fetch(`/api/youtube/embeddable?id=${encodeURIComponent(vid)}`);
-    const d = await r.json();
-    if (d.embeddable === false) silentSwap();
-  } catch {
-    // erro na rota — não faz nada, deixa o vídeo correr
-  }
+  if (playerLoading) playerLoading.style.display = s === 'loading' ? 'flex' : 'none';
+  if (playerBlocked) playerBlocked.style.display = s === 'blocked' ? 'flex' : 'none';
+  if (playerFailed) playerFailed.style.display  = s === 'failed'  ? 'flex' : 'none';
+  if (playerMount && s === 'none') playerMount.style.display = 'block';
 }
 
 // YT IFrame API — captura erros 101/150/153 (embed bloqueado)
@@ -459,24 +492,25 @@ async function silentSwap() {
   await new Promise(r => setTimeout(r, 700));
 
   p.vid = next.id;
-  el('modalTitle').textContent = next.title;
-  el('modalCh').textContent    = next.channelTitle;
-  el('modalLink').href         = `https://www.youtube.com/watch?v=${next.id}`;
-  loadVideo(next.id);
-}
+  const modalTitle = el('modalTitle');
+  const modalCh = el('modalCh');
+  const modalLink = el('modalLink');
 
-function showPlayerState(s) {
-  el('playerLoading').style.display = s === 'loading' ? 'flex' : 'none';
-  el('playerBlocked').style.display = s === 'blocked' ? 'flex' : 'none';
-  el('playerFailed').style.display  = s === 'failed'  ? 'flex' : 'none';
-  el('playerMount').style.display   = s === 'none'    ? 'block': el('playerMount').style.display;
+  if (modalTitle) modalTitle.textContent = next.title;
+  if (modalCh) modalCh.textContent = next.channelTitle;
+  if (modalLink) modalLink.href = `https://www.youtube.com/watch?v=${next.id}`;
+  loadVideo(next.id);
 }
 
 function closeModal() {
   clearTimeout(state.player.errorTimer);
-  el('modal').classList.remove('open');
-  el('playerMount').innerHTML = '';
-  el('playerMount').style.display = 'none';
+  const modal = el('modal');
+  const playerMount = el('playerMount');
+  if (modal) modal.classList.remove('open');
+  if (playerMount) {
+    playerMount.innerHTML = '';
+    playerMount.style.display = 'none';
+  }
   showPlayerState('loading');
   state.player.vid = null;
 }
@@ -488,82 +522,112 @@ document.addEventListener('click', e => {
   if (e.target === el('modal')) closeModal();
 });
 
-el('modalClose').addEventListener('click', closeModal);
+const modalClose = el('modalClose');
+if (modalClose) modalClose.addEventListener('click', closeModal);
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && el('modal').classList.contains('open')) closeModal();
+  const modal = el('modal');
+  if (e.key === 'Escape' && modal && modal.classList.contains('open')) closeModal();
 });
 
-el('modalDoneBtn').addEventListener('click', () => {
-  const vid = el('modalDoneBtn').dataset.vid;
-  if (!vid) return;
-  toggleDone(vid);
-  const done = isVideoDone(vid);
-  el('modalDoneBtn').classList.toggle('marked', done);
-  el('modalDoneBtn').textContent = done ? '✓ concluída' : '✓ marcar como concluída';
-  el('modalDoneBadge').classList.toggle('show', done);
-  toast(done ? '✓ Aula marcada como concluída!' : 'Aula desmarcada.');
-});
-
-el('pbReset').addEventListener('click', () => {
-  if (!confirm('Resetar todo o progresso?')) return;
-  localStorage.removeItem(PROGRESS_KEY);
-  document.querySelectorAll('.card.done').forEach(c => c.classList.remove('done'));
-  refreshProgress();
-  toast('Progresso resetado.');
-});
-
-el('tabs').addEventListener('click', e => {
-  const tab = e.target.closest('.tab');
-  if (!tab) return;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
-  tab.classList.add('on');
-  state.filter = tab.dataset.filter;
-  el('searchInput').value = '';
-  state.searchQuery = '';
-  renderCategories();
-});
-
-document.querySelector('.view-group').addEventListener('click', e => {
-  const btn = e.target.closest('.vbtn');
-  if (!btn) return;
-  document.querySelectorAll('.vbtn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  state.view = btn.dataset.view;
-  document.querySelectorAll('.cards-wrap').forEach(w => {
-    w.classList.toggle('g-view', state.view === 'grid');
-    w.classList.toggle('l-view', state.view === 'list');
+const modalDoneBtn = el('modalDoneBtn');
+if (modalDoneBtn) {
+  modalDoneBtn.addEventListener('click', () => {
+    const vid = modalDoneBtn.dataset.vid;
+    if (!vid) return;
+    toggleDone(vid);
+    const done = isVideoDone(vid);
+    modalDoneBtn.classList.toggle('marked', done);
+    modalDoneBtn.textContent = done ? '✓ concluída' : '✓ marcar como concluída';
+    const modalDoneBadge = el('modalDoneBadge');
+    if (modalDoneBadge) modalDoneBadge.classList.toggle('show', done);
+    toast(done ? '✓ Aula marcada como concluída!' : 'Aula desmarcada.');
   });
-});
+}
 
-el('searchBtn').addEventListener('click', () => {
-  const q = el('searchInput').value.trim();
-  if (q) doSearch(q); else toast('Digite um tema para buscar.');
-});
+const pbReset = el('pbReset');
+if (pbReset) {
+  pbReset.addEventListener('click', () => {
+    if (!confirm('Resetar todo o progresso?')) return;
+    localStorage.removeItem(PROGRESS_KEY);
+    document.querySelectorAll('.card.done').forEach(c => c.classList.remove('done'));
+    refreshProgress();
+    toast('Progresso resetado.');
+  });
+}
 
-el('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    el('suggestions').classList.remove('open');
-    const q = el('searchInput').value.trim();
-    if (q) doSearch(q);
-  }
-});
+const tabs = el('tabs');
+if (tabs) {
+  tabs.addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+    tab.classList.add('on');
+    state.filter = tab.dataset.filter;
+    const searchInput = el('searchInput');
+    if (searchInput) searchInput.value = '';
+    state.searchQuery = '';
+    renderCategories();
+  });
+}
 
-el('searchInput').addEventListener('input', () => {
-  clearTimeout(state.suggestTimer);
-  const q = el('searchInput').value.trim();
-  state.suggestTimer = setTimeout(() => loadSuggestions(q), 280);
-});
+const viewGroup = document.querySelector('.view-group');
+if (viewGroup) {
+  viewGroup.addEventListener('click', e => {
+    const btn = e.target.closest('.vbtn');
+    if (!btn) return;
+    document.querySelectorAll('.vbtn').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    state.view = btn.dataset.view;
+    document.querySelectorAll('.cards-wrap').forEach(w => {
+      w.classList.toggle('g-view', state.view === 'grid');
+      w.classList.toggle('l-view', state.view === 'list');
+    });
+  });
+}
+
+const searchBtn = el('searchBtn');
+if (searchBtn) {
+  searchBtn.addEventListener('click', () => {
+    const searchInput = el('searchInput');
+    const q = searchInput ? searchInput.value.trim() : '';
+    if (q) doSearch(q); else toast('Digite um tema para buscar.');
+  });
+}
+
+const searchInput = el('searchInput');
+if (searchInput) {
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const suggestions = el('suggestions');
+      if (suggestions) suggestions.classList.remove('open');
+      const q = searchInput.value.trim();
+      if (q) doSearch(q);
+    }
+  });
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(state.suggestTimer);
+    const q = searchInput.value.trim();
+    state.suggestTimer = setTimeout(() => loadSuggestions(q), 280);
+  });
+}
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('.search-input-wrap')) el('suggestions').classList.remove('open');
+  if (!e.target.closest('.search-input-wrap')) {
+    const suggestions = el('suggestions');
+    if (suggestions) suggestions.classList.remove('open');
+  }
 });
 
 document.querySelectorAll('.schip').forEach(chip => {
   chip.addEventListener('click', () => {
-    el('searchInput').value = chip.dataset.q;
-    doSearch(chip.dataset.q);
+    const searchInput = el('searchInput');
+    if (searchInput) {
+      searchInput.value = chip.dataset.q;
+      doSearch(chip.dataset.q);
+    }
   });
 });
 
