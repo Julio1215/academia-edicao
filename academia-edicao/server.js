@@ -18,25 +18,20 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc:    ["'self'"],
-        scriptSrc:     ["'self'", "'unsafe-inline'", "https://www.youtube.com", "https://s.ytimg.com"],
-        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://www.youtube.com", "https://s.ytimg.com"],
+        scriptSrc:     ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com"],
         styleSrc:      ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc:       ["'self'", "https://fonts.gstatic.com"],
-        imgSrc:        ["'self'", "data:", "https://img.youtube.com", "https://i.ytimg.com", "https://*.ytimg.com"],
-        frameSrc:      ["'self'", "https://www.youtube.com", "https://youtube.com"],
+        fontSrc:       ["'self'", "data:", "https://fonts.gstatic.com"],
+        imgSrc:        ["'self'", "data:", "blob:", "https://img.youtube.com", "https://i.ytimg.com", "https://*.ytimg.com"],
+        frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com"],
         frameAncestors:["'self'"],
-        connectSrc:    [
-          "'self'",
-          "https://www.googleapis.com",
-          "https://www.youtube.com",
-          "https://*.youtube.com",
-          "https://suggestqueries.google.com",
-        ],
-        mediaSrc:      ["'self'", "https://www.youtube.com"],
+        connectSrc:    ["'self'", "https://www.googleapis.com", "https://www.youtube.com", "https://*.youtube.com", "https://suggestqueries.google.com"],
+        mediaSrc:      ["'self'", "https://www.youtube.com", "blob:"],
         workerSrc:     ["'self'", "blob:"],
+        objectSrc:     ["'none'"],
       },
     },
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy:   false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );

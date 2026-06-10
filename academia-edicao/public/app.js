@@ -364,39 +364,33 @@ async function prefetchCandidates(query, excludeVid) {
 }
 
 function loadVideo(vid) {
-  showPlayerState('loading');
+  el('playerLoading').style.display = 'flex';
+  el('playerBlocked').style.display = 'none';
+  el('playerFailed').style.display  = 'none';
   const mount = el('playerMount');
   mount.style.display = 'none';
-  mount.innerHTML     = '';
+  mount.innerHTML = '';
 
   const iframe = document.createElement('iframe');
-  iframe.allow         = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
   iframe.allowFullscreen = true;
   iframe.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:none;';
-  iframe.src = `https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`;
+  iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`;
 
   iframe.addEventListener('load', () => {
-    showPlayerState('none');
+    el('playerLoading').style.display = 'none';
     mount.innerHTML = '';
     mount.appendChild(iframe);
     mount.style.display = 'block';
-    // Agenda verificação via backend (sem noembed, sem violar CSP)
-    state.player.errorTimer = setTimeout(() => checkEmbeddable(vid), 3500);
+    // SEM timer — só o postMessage detecta erros reais
   });
 
+  iframe.addEventListener('error', () => silentSwap());
   mount.appendChild(iframe);
 }
 
-// Verifica via BACKEND se o vídeo permite embed — não chama noembed.com diretamente
 async function checkEmbeddable(vid) {
-  if (state.player.vid !== vid) return;
-  try {
-    const r = await fetch(`/api/youtube/embeddable?id=${encodeURIComponent(vid)}`);
-    const d = await r.json();
-    if (d.embeddable === false) silentSwap();
-  } catch {
-    // erro na rota — não faz nada, deixa o vídeo correr
-  }
+  // desativado — Codespace bloqueia chamadas externas desnecessariamente
 }
 
 // YT IFrame API — captura erros 101/150/153 (embed bloqueado)
