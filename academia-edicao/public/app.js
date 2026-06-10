@@ -390,7 +390,7 @@ function loadVideo(vid) {
 }
 
 async function checkEmbeddable(vid) {
-  // desativado — Codespace bloqueia chamadas externas desnecessariamente
+  // desativado — verificação via postMessage é suficiente
 }
 
 // YT IFrame API — captura erros 101/150/153 (embed bloqueado)
