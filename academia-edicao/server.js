@@ -3,29 +3,31 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4000;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 
-// ── CSP corrigida ────────────────────────────────────────────────────
-// noembed.com foi REMOVIDO do frontend — verificação de embed agora é
-// feita pelo backend via /api/youtube/details (retorna embeddable: bool)
+// ── CSP ──────────────────────────────────────────────────────────────
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc:    ["'self'"],
-        scriptSrc:     ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com"],
+        scriptSrc:     ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://s.ytimg.com"],
         styleSrc:      ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc:       ["'self'", "data:", "https://fonts.gstatic.com"],
         imgSrc:        ["'self'", "data:", "blob:", "https://img.youtube.com", "https://i.ytimg.com", "https://*.ytimg.com"],
-        frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com"],
+        frameSrc:      ["'self'", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com"],
         frameAncestors:["'self'"],
         connectSrc:    ["'self'", "https://www.googleapis.com", "https://www.youtube.com", "https://*.youtube.com", "https://suggestqueries.google.com"],
-        mediaSrc:      ["'self'", "https://www.youtube.com", "blob:"],
+        mediaSrc:      ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "blob:"],
         workerSrc:     ["'self'", "blob:"],
         objectSrc:     ["'none'"],
       },
@@ -38,28 +40,63 @@ app.use(
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
-app.use(morgan("combined"));
+app.use(morgan("dev"));
 app.use(express.static("public"));
 
-// ── CACHE ────────────────────────────────────────────────────────────
-const cache = new Map();
-const CACHE_TTL = 1000 * 60 * 5;
+// ══════════════════════════════════════════════════════════════════════
+//  CACHE EM DISCO — salva resultados em cache.json por 24h
+//  As 31 categorias gastam cota só UMA vez por dia.
+//  Se a cota esgotar, serve o cache expirado em vez de tela vazia.
+// ══════════════════════════════════════════════════════════════════════
+const CACHE_FILE     = path.join(__dirname, "cache.json");
+const CACHE_TTL_MEM  = 1000 * 60 * 5;           // memória: 5 min
+const CACHE_TTL_DISK = 1000 * 60 * 60 * 24;     // disco:   24h
+
+const memCache = new Map();
+let diskCache  = {};
+
+// Carrega cache do disco ao iniciar
+try {
+  if (fs.existsSync(CACHE_FILE)) {
+    diskCache = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
+    const total = Object.keys(diskCache).length;
+    const valid = Object.values(diskCache).filter(v => Date.now() < v.expiresAt).length;
+    console.log(`📦 Cache carregado: ${total} entradas (${valid} válidas)`);
+  }
+} catch (e) {
+  console.warn("⚠ Cache corrompido, reiniciando:", e.message);
+  diskCache = {};
+}
+
+function saveDiskCache() {
+  try { fs.writeFileSync(CACHE_FILE, JSON.stringify(diskCache), "utf8"); }
+  catch (e) { console.warn("⚠ Erro ao salvar cache:", e.message); }
+}
 
 function getCache(key) {
-  const item = cache.get(key);
-  if (!item) return null;
-  if (Date.now() > item.expiresAt) { cache.delete(key); return null; }
-  return item.value;
+  // 1. Memória (mais rápido)
+  const mem = memCache.get(key);
+  if (mem && Date.now() < mem.expiresAt) return mem.value;
+  // 2. Disco
+  const disk = diskCache[key];
+  if (disk && Date.now() < disk.expiresAt) {
+    memCache.set(key, { value: disk.value, expiresAt: Date.now() + CACHE_TTL_MEM });
+    return disk.value;
+  }
+  return null;
 }
-function setCache(key, value, ttl = CACHE_TTL) {
-  cache.set(key, { value, expiresAt: Date.now() + ttl });
+
+function setCache(key, value, ttl = CACHE_TTL_DISK) {
+  memCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MEM });
+  diskCache[key] = { value, expiresAt: Date.now() + ttl };
+  saveDiskCache();
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────────
 function normalizeQuery(q = "") { return String(q).trim().slice(0, 200); }
 
 async function fetchJson(url, options = {}) {
-  const res = await fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
+  const res  = await fetch(url, { ...options, signal: AbortSignal.timeout(8000) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
   return data;
@@ -67,7 +104,7 @@ async function fetchJson(url, options = {}) {
 
 // ── QUERIES DE BUSCA ─────────────────────────────────────────────────
 function buildSearchQueries(prompt) {
-  const q = normalizeQuery(prompt).toLowerCase();
+  const q   = normalizeQuery(prompt).toLowerCase();
   const has = (...terms) => terms.some(t => q.includes(t));
   const queries = new Set();
 
@@ -75,7 +112,7 @@ function buildSearchQueries(prompt) {
 
   if (has("after effects","ae ","motion design","motion graphics","vinheta","intro"))
     queries.add("after effects tutorial português 2024");
-  if (has("keyframe","animação","animar","easing","timing","spacing"))
+  if (has("keyframe","animação","animar","easing","timing"))
     queries.add("after effects keyframes animação tutorial português");
   if (has("mascara","máscara","mask","track matte","matte"))
     queries.add("after effects mascaras track matte tutorial português");
@@ -115,8 +152,6 @@ function buildSearchQueries(prompt) {
     queries.add("capcut tutorial completo português 2024 2025");
   if (has("beat","ritmo","sincroniz","música"))
     queries.add("capcut corte ritmo beat sync tutorial português");
-  if (has("filtro","cor capcut","lut capcut"))
-    queries.add("capcut color grading filtros luts tutorial português");
   if (has("viral","viralizar","views","engajamento"))
     queries.add("capcut reels shorts viral tutorial português 2025");
   if (has("template","trend","tendência"))
@@ -135,43 +170,79 @@ function buildSearchQueries(prompt) {
 
 // ── ROTAS ────────────────────────────────────────────────────────────
 
-app.get("/health", (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+app.get("/health", (_req, res) => {
+  const total = Object.keys(diskCache).length;
+  const valid = Object.values(diskCache).filter(v => Date.now() < v.expiresAt).length;
+  res.json({
+    ok: true,
+    time: new Date().toISOString(),
+    cache: { total, valid, file: CACHE_FILE },
+    apiKey: YOUTUBE_API_KEY ? "configurada ✓" : "NÃO configurada ✗",
+  });
+});
 
-// Sugestões de autocomplete
+// Limpa cache (força rebusca de tudo)
+app.post("/api/cache/clear", (_req, res) => {
+  memCache.clear();
+  diskCache = {};
+  saveDiskCache();
+  console.log("🗑 Cache limpo");
+  res.json({ ok: true, message: "Cache limpo. Próximas buscas irão ao YouTube." });
+});
+
+// Status do cache
+app.get("/api/cache/status", (_req, res) => {
+  const entries = Object.entries(diskCache).map(([key, val]) => ({
+    key:       key.slice(0, 60),
+    valid:     Date.now() < val.expiresAt,
+    expiresIn: Math.round((val.expiresAt - Date.now()) / 1000 / 60) + " min",
+    items:     val.value?.items?.length ?? "—",
+  }));
+  res.json({ total: entries.length, entries });
+});
+
+// Sugestões autocomplete
 app.get("/api/suggest", async (req, res) => {
   try {
     const q = normalizeQuery(req.query.q);
     if (!q) return res.json({ items: [] });
-    const cacheKey = `suggest:${q}`;
-    const cached = getCache(cacheKey);
+    const key    = `suggest:${q}`;
+    const cached = getCache(key);
     if (cached) return res.json(cached);
-    const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(q)}`;
+    const url  = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(q)}`;
     const data = await fetchJson(url);
     const items = Array.isArray(data?.[1]) ? data[1].slice(0, 8) : [];
     const payload = { items };
-    setCache(cacheKey, payload, 1000 * 60 * 10);
+    setCache(key, payload, 1000 * 60 * 60 * 6); // cache 6h
     res.json(payload);
   } catch {
     res.json({ items: [] });
   }
 });
 
-// Busca de vídeos no YouTube
+// ── BUSCA YOUTUBE — cache 24h ─────────────────────────────────────────
 app.get("/api/youtube/search", async (req, res) => {
+  const q          = normalizeQuery(req.query.q);
+  const pageToken  = normalizeQuery(req.query.pageToken);
+  const maxResults = Math.min(parseInt(req.query.maxResults || "12", 10), 25);
+  const lang       = normalizeQuery(req.query.lang || "pt-BR");
+
+  if (!q) return res.json({ items: [], nextPageToken: null });
+
+  const cacheKey = `yt:${q}:${pageToken}:${maxResults}:${lang}`;
+
+  // Cache válido → responde sem gastar cota
+  const cached = getCache(cacheKey);
+  if (cached) {
+    console.log(`💾 Cache: ${q.slice(0, 50)}`);
+    return res.json(cached);
+  }
+
+  if (!YOUTUBE_API_KEY)
+    return res.status(500).json({ error: "YOUTUBE_API_KEY não configurada no .env" });
+
   try {
-    if (!YOUTUBE_API_KEY)
-      return res.status(500).json({ error: "YOUTUBE_API_KEY não configurada. Crie o arquivo .env" });
-
-    const q            = normalizeQuery(req.query.q);
-    const pageToken    = normalizeQuery(req.query.pageToken);
-    const maxResults   = Math.min(parseInt(req.query.maxResults || "12", 10), 25);
-    const lang         = normalizeQuery(req.query.lang || "pt-BR");
-
-    if (!q) return res.json({ items: [], nextPageToken: null });
-
-    const cacheKey = `yt:${q}:${pageToken}:${maxResults}:${lang}`;
-    const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
+    console.log(`🔍 YouTube API: ${q.slice(0, 60)}`);
 
     const url =
       `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video` +
@@ -182,73 +253,74 @@ app.get("/api/youtube/search", async (req, res) => {
       `${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}` +
       `&key=${YOUTUBE_API_KEY}`;
 
-    const data = await fetchJson(url);
-
+    const data  = await fetchJson(url);
     const items = (data.items || []).map(it => ({
       id:           it.id.videoId,
       title:        it.snippet.title,
       channelTitle: it.snippet.channelTitle,
       description:  it.snippet.description,
       publishedAt:  it.snippet.publishedAt,
-      thumbnail:
-        it.snippet.thumbnails?.medium?.url ||
-        `https://img.youtube.com/vi/${it.id.videoId}/mqdefault.jpg`,
+      thumbnail:    it.snippet.thumbnails?.medium?.url ||
+                    `https://img.youtube.com/vi/${it.id.videoId}/mqdefault.jpg`,
     }));
 
     const payload = { items, nextPageToken: data.nextPageToken || null };
-    setCache(cacheKey, payload);
+    setCache(cacheKey, payload, CACHE_TTL_DISK); // salva 24h
+    console.log(`✓ ${items.length} vídeos cacheados: ${q.slice(0, 40)}`);
     res.json(payload);
+
   } catch (err) {
-    console.error("Erro YouTube search:", err.message);
+    console.error("Erro YouTube:", err.message);
+
+    // Cota esgotada → serve cache expirado se existir (melhor que vazio)
+    if (err.message.includes("Quota exceeded")) {
+      const stale = diskCache[cacheKey];
+      if (stale) {
+        console.log(`⚡ Cota esgotada, servindo cache expirado: ${q.slice(0, 40)}`);
+        return res.json({ ...stale.value, stale: true });
+      }
+      return res.json({
+        items: [],
+        nextPageToken: null,
+        error: "Cota da API esgotada. Os vídeos voltam amanhã automaticamente.",
+      });
+    }
+
     res.json({ items: [], nextPageToken: null, error: err.message });
   }
 });
 
-// ── VERIFICAÇÃO DE EMBED (substitui noembed no frontend) ─────────────
-// Retorna { embeddable: true|false } para cada videoId.
-// O frontend usa essa rota antes de exibir — sem precisar chamar noembed.com.
+// Verificação de embed
 app.get("/api/youtube/embeddable", async (req, res) => {
   try {
-    if (!YOUTUBE_API_KEY) return res.json({ embeddable: true }); // sem chave, assume ok
-
-    const id = normalizeQuery(req.query.id);
-    if (!id) return res.json({ embeddable: false });
-
-    const cacheKey = `embed:${id}`;
-    const cached = getCache(cacheKey);
+    if (!YOUTUBE_API_KEY) return res.json({ embeddable: true });
+    const id  = normalizeQuery(req.query.id);
+    if (!id)   return res.json({ embeddable: false });
+    const key  = `embed:${id}`;
+    const cached = getCache(key);
     if (cached !== null) return res.json(cached);
-
-    const url =
-      `https://www.googleapis.com/youtube/v3/videos?part=status&id=${encodeURIComponent(id)}&key=${YOUTUBE_API_KEY}`;
+    const url  = `https://www.googleapis.com/youtube/v3/videos?part=status&id=${encodeURIComponent(id)}&key=${YOUTUBE_API_KEY}`;
     const data = await fetchJson(url);
-    const item = data.items?.[0];
-    const embeddable = item ? item.status?.embeddable !== false : false;
-
+    const embeddable = data.items?.[0]?.status?.embeddable !== false;
     const payload = { embeddable };
-    setCache(cacheKey, payload, 1000 * 60 * 30); // cache 30min
+    setCache(key, payload, 1000 * 60 * 60 * 24 * 7); // 7 dias
     res.json(payload);
   } catch {
-    res.json({ embeddable: true }); // em caso de erro, tenta reproduzir mesmo assim
+    res.json({ embeddable: true });
   }
 });
 
-// Detalhes de vídeos (batch)
+// Detalhes em batch
 app.get("/api/youtube/details", async (req, res) => {
   try {
     if (!YOUTUBE_API_KEY) return res.json({ items: [] });
-
-    const ids = String(req.query.ids || "")
-      .split(",").map(x => x.trim()).filter(Boolean).slice(0, 25);
+    const ids = String(req.query.ids || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 25);
     if (!ids.length) return res.json({ items: [] });
-
-    const cacheKey = `yt-details:${ids.join(",")}`;
-    const cached = getCache(cacheKey);
+    const key    = `yt-details:${ids.join(",")}`;
+    const cached = getCache(key);
     if (cached) return res.json(cached);
-
-    const url =
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${ids.join(",")}&key=${YOUTUBE_API_KEY}`;
+    const url  = `https://www.googleapis.com/youtube/v3/videos?part=snippet,status&id=${ids.join(",")}&key=${YOUTUBE_API_KEY}`;
     const data = await fetchJson(url);
-
     const items = (data.items || []).map(it => ({
       id:            it.id,
       title:         it.snippet?.title,
@@ -257,16 +329,15 @@ app.get("/api/youtube/details", async (req, res) => {
       embeddable:    it.status?.embeddable !== false,
       privacyStatus: it.status?.privacyStatus || "public",
     }));
-
     const payload = { items };
-    setCache(cacheKey, payload);
+    setCache(key, payload);
     res.json(payload);
   } catch {
     res.json({ items: [] });
   }
 });
 
-// Busca com IA (queries contextuais)
+// Busca IA
 function routeSearch(req, res, prompt) {
   const q = normalizeQuery(prompt || req.query.q || "");
   if (!q) return res.json({ queries: [] });
@@ -275,15 +346,13 @@ function routeSearch(req, res, prompt) {
 app.get("/api/ai/search",  (req, res) => routeSearch(req, res, req.query.q));
 app.post("/api/ai/search", (req, res) => routeSearch(req, res, req.body?.prompt));
 
-// Error handler
 app.use((err, _req, res, _next) => {
   console.error(err);
-  res.status(500).json({ error: "Erro interno no servidor." });
+  res.status(500).json({ error: "Erro interno." });
 });
 
 app.listen(PORT, () => {
-  console.log(`✓ Academia de Edição rodando em http://localhost:${PORT}`);
-  if (!YOUTUBE_API_KEY) {
-    console.warn("⚠  YOUTUBE_API_KEY não encontrada — crie o arquivo .env");
-  }
+  console.log(`\n✓ Academia de Edição → http://localhost:${PORT}`);
+  console.log(`📦 Cache: ${CACHE_FILE}`);
+  console.log(`🔑 API Key: ${YOUTUBE_API_KEY ? "configurada ✓" : "NÃO configurada ✗"}\n`);
 });
