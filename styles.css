@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Academia de Edição — Do Zero ao Profissional</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">Academia de Edição · 2025</div>
+  <h1 class="hero-title">DO ZERO AO<br><span class="glow">PROFISSIONAL</span><br><span class="dim">EM VÍDEO</span></h1>
+  <p class="hero-sub">busca real no YouTube · player embutido sem erros · barra de progresso por aula</p>
+  <div class="hero-chips">
+    <span class="hchip hc-ae">After Effects</span>
+    <span class="hchip hc-pr">Premiere Pro</span>
+    <span class="hchip hc-cc">CapCut</span>
+  </div>
+</div>
+
+<!-- PROGRESSO GERAL -->
+<div class="progress-banner" id="progressBanner">
+  <div class="pb-left">
+    <span class="pb-label">Seu progresso</span>
+    <span class="pb-sub" id="pbSub">0 aulas concluídas</span>
+  </div>
+  <div class="pb-bar-wrap">
+    <div class="pb-bar"><div class="pb-fill" id="pbFill" style="width:0%"></div></div>
+    <span class="pb-pct" id="pbPct">0%</span>
+  </div>
+  <button class="pb-reset" id="pbReset" title="Resetar progresso">↺</button>
+</div>
+
+<!-- BUSCA -->
+<div class="search-wrap">
+  <div class="search-label">✦ Busca Inteligente — YouTube em tempo real</div>
+  <div class="search-row">
+    <div class="search-input-wrap">
+      <input class="search-input" id="searchInput"
+        placeholder="Ex: chroma key after effects, corte rítmico premiere, transição capcut viral..."
+        autocomplete="off" spellcheck="false">
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+    <button class="search-btn" id="searchBtn">Buscar</button>
+  </div>
+  <div class="search-chips" id="quickChips">
+    <span class="schip" data-q="after effects animação de texto tutorial">texto animado AE</span>
+    <span class="schip" data-q="premiere pro color grading lumetri">color grading</span>
+    <span class="schip" data-q="after effects chroma key fundo verde">chroma key</span>
+    <span class="schip" data-q="capcut reels viral transições 2025">reels virais</span>
+    <span class="schip" data-q="after effects expressões wiggle">expressões AE</span>
+    <span class="schip" data-q="motion graphics logo animado after effects">logo animado</span>
+    <span class="schip" data-q="premiere pro audio mix narração">áudio profissional</span>
+    <span class="schip" data-q="after effects particulas vfx explosao">VFX partículas</span>
+    <span class="schip" data-q="kinetic typography tipografia animada">kinetic type</span>
+    <span class="schip" data-q="after effects mascaras track matte">máscaras & matte</span>
+    <span class="schip" data-q="capcut legendas automaticas subtitulos">legendas CapCut</span>
+    <span class="schip" data-q="premiere pro exportar render youtube">export & codec</span>
+  </div>
+</div>
+
+<!-- SEARCH LOADING -->
+<div class="search-loading" id="searchLoading">
+  <div class="sl-dots"><span></span><span></span><span></span></div>
+  <span class="sl-text" id="searchLoadingText">Buscando no YouTube...</span>
+</div>
+
+<!-- CONTROLES -->
+<div class="controls" id="controls">
+  <div class="tab-group" id="tabs">
+    <button class="tab on" data-filter="all">Todos</button>
+    <button class="tab" data-filter="ae">After Effects</button>
+    <button class="tab" data-filter="pr">Premiere Pro</button>
+    <button class="tab" data-filter="cc">CapCut</button>
+  </div>
+  <span class="ctrl-count" id="ctrlCount"></span>
+  <div class="view-group">
+    <button class="vbtn on" data-view="list" title="Lista">☰</button>
+    <button class="vbtn" data-view="grid" title="Grade">⊞</button>
+  </div>
+</div>
+
+<!-- CONTEÚDO PRINCIPAL -->
+<div class="content" id="mainContent"></div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat"><span class="stat-n" id="statAulas">—</span><div class="stat-l">Aulas</div></div>
+  <div class="stat"><span class="stat-n" id="statCats">—</span><div class="stat-l">Tópicos</div></div>
+  <div class="stat"><span class="stat-n" id="statDone">0</span><div class="stat-l">Concluídas</div></div>
+  <div class="stat"><span class="stat-n">🇧🇷</span><div class="stat-l">PT-BR</div></div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span class="footer-note">YouTube em tempo real · player embutido · progresso salvo localmente</span>
+  <span class="footer-api">✦ busca via YouTube Data API</span>
+</div>
+
+<!-- MODAL PLAYER -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-bar">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-bar-actions">
+        <button class="modal-done-btn" id="modalDoneBtn" title="Marcar como concluída">✓ concluída</button>
+        <button class="modal-close" id="modalClose">✕ fechar</button>
+      </div>
+    </div>
+    <!-- player state: loading -->
+    <div class="player-state" id="playerLoading">
+      <div class="ps-dots"><span></span><span></span><span></span></div>
+      <span class="ps-text">carregando vídeo...</span>
+    </div>
+    <!-- player state: blocked -->
+    <div class="player-state" id="playerBlocked" style="display:none">
+      <div class="ps-icon">⚠</div>
+      <span class="ps-text">Buscando vídeo alternativo...</span>
+      <div class="ps-sub">Este vídeo bloqueou incorporação. Tentando outro do mesmo tópico.</div>
+    </div>
+    <!-- player state: failed -->
+    <div class="player-state" id="playerFailed" style="display:none">
+      <div class="ps-icon">✕</div>
+      <span class="ps-text">Não foi possível carregar este vídeo</span>
+      <div class="ps-sub">Todos os vídeos disponíveis bloquearam incorporação neste tópico.</div>
+    </div>
+    <!-- iframe wrapper -->
+    <div class="modal-embed" id="playerMount" style="display:none"></div>
+    <div class="modal-meta">
+      <span class="modal-ch" id="modalCh"></span>
+      <div class="modal-meta-right">
+        <span class="modal-done-badge" id="modalDoneBadge">✓ concluída</span>
+        <a class="modal-yt" id="modalLink" target="_blank" rel="noopener">↗ ver no YouTube</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
