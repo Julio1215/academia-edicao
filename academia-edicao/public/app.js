@@ -6,7 +6,7 @@ function App() {
   const [error, setError] = useState(null);
 
   // COLOQUE A SUA CHAVE E TERMO DE PESQUISA AQUI
-  const API_KEY = "A_SUA_CHAVE_API_AQUI"; 
+  const API_KEY = "AIzaSyBvkrdQNfmo7f2XifEJ9BObKJg9BCjmseI"; 
   const SEARCH_QUERY = "Programação React"; 
 
   // 1. Isolamos a função que faz o pedido à API do YouTube
