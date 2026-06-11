@@ -29,7 +29,26 @@ function refreshProgress() {
 
 const el  = id => document.getElementById(id);
 const esc = s  => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const CACHE_TTL = 5*60*1000;
+const CACHE_TTL = 24*60*60*1000;
+const API_CACHE_KEY = 'academia_api_cache_v2';
+
+function loadApiCache() {
+  try {
+    return new Map(Object.entries(JSON.parse(localStorage.getItem(API_CACHE_KEY) || '{}')));
+  } catch {
+    return new Map();
+  }
+}
+function saveApiCache() {
+  try {
+    const data = {};
+    state.cache.forEach((value, key) => {
+      if (Date.now() - value.ts < CACHE_TTL) data[key] = value;
+    });
+    localStorage.setItem(API_CACHE_KEY, JSON.stringify(data));
+  } catch {}
+}
+state.cache = loadApiCache();
 
 function toast(msg,dur=2800) {
   const t=el('toast'); t.textContent=msg; t.classList.add('show');
@@ -40,7 +59,7 @@ async function apiGet(url) {
   if(hit&&Date.now()-hit.ts<CACHE_TTL) return hit.data;
   try {
     const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status);
-    const data=await r.json(); state.cache.set(url,{data,ts:Date.now()}); return data;
+    const data=await r.json(); state.cache.set(url,{data,ts:Date.now()}); saveApiCache(); return data;
   } catch(e) { console.warn('[apiGet]',url,e.message); return null; }
 }
 
@@ -241,16 +260,15 @@ function loadVideo(vid){
   mount.innerHTML='';
 
   const iframe=document.createElement('iframe');
-  iframe.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+  iframe.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
   iframe.allowFullscreen=true;
+  iframe.referrerPolicy='strict-origin-when-cross-origin';
   iframe.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:none;';
   // youtube-nocookie tem menos bloqueios de embed
-  iframe.src=`https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`;
+  iframe.src=`https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
 
   iframe.addEventListener('load',()=>{
     el('playerLoading').style.display='none';
-    mount.innerHTML='';
-    mount.appendChild(iframe);
     mount.style.display='block';
   });
 
