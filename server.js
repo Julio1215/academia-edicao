@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -41,7 +41,10 @@ app.use(
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
+
+// Fallback: serve root directory files (index.html, app.js, styles.css)
+app.use(express.static(__dirname));
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  CACHE EM DISCO â€” salva resultados em cache.json por 24h
@@ -380,5 +383,3 @@ app.listen(PORT, () => {
   console.log(`ðŸ“¦ Cache: ${CACHE_FILE}`);
   console.log(`ðŸ”‘ API Key: ${YOUTUBE_API_KEY ? "configurada âœ“" : "NÃƒO configurada âœ—"}\n`);
 });
-
-
