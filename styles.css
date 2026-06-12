@@ -111,8 +111,13 @@ body::before{
   content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
   background:var(--body-before);
 }
-.hero,.progress-banner,.search-wrap,.search-loading,.controls,.content,.stats-bar,.footer,.modal,.toast{
+.hero,.progress-banner,.search-loading,.controls,.content,.stats-bar,.footer,.modal,.toast{
   position:relative;z-index:1;
+}
+/* search-wrap SEPARADO com z-index:40 > controls(30)
+   para que o dropdown filho saia por cima da barra sticky */
+.search-wrap{
+  position:relative;z-index:40;
 }
 
 /* ══════════════════════════════════════════════════════════════════
