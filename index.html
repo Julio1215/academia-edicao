@@ -143,5 +143,79 @@
 <div class="toast" id="toast"></div>
 
 <script src="/app.js"></script>
+
+<!-- THEME SWITCHER -->
+<div class="theme-switcher" id="themeSwitcher">
+  <div class="theme-panel" id="themePanel">
+    <button class="theme-opt active" data-theme="neon">
+      <span class="t-swatch" style="background:#b44eff"></span> Neon
+    </button>
+    <button class="theme-opt" data-theme="carbon">
+      <span class="t-swatch" style="background:#00e5ff"></span> Carbon
+    </button>
+    <button class="theme-opt" data-theme="paper">
+      <span class="t-swatch" style="background:#1a1a1a;border-color:#ccc"></span> Paper
+    </button>
+    <button class="theme-opt" data-theme="sunset">
+      <span class="t-swatch" style="background:#ff6b35"></span> Sunset
+    </button>
+    <button class="theme-opt" data-theme="forest">
+      <span class="t-swatch" style="background:#4caf70"></span> Forest
+    </button>
+  </div>
+  <button class="theme-toggle-btn" id="themeToggleBtn">
+    <span class="t-dot"></span> tema
+  </button>
+</div>
+
+<script>
+(function(){
+  var THEMES = ['neon','carbon','paper','sunset','forest'];
+  var STORAGE_KEY = 'academia_theme_v1';
+  var panel = document.getElementById('themePanel');
+  var btn   = document.getElementById('themeToggleBtn');
+  var dot   = btn.querySelector('.t-dot');
+  var opts  = document.querySelectorAll('.theme-opt');
+
+  // Cores do ponto conforme tema
+  var DOT_COLORS = {
+    neon:'#b44eff', carbon:'#00e5ff', paper:'#1a1a1a', sunset:'#ff6b35', forest:'#4caf70'
+  };
+
+  function applyTheme(t) {
+    if (!THEMES.includes(t)) t = 'neon';
+    document.documentElement.setAttribute('data-theme', t);
+    dot.style.background = DOT_COLORS[t];
+    opts.forEach(function(o){
+      o.classList.toggle('active', o.dataset.theme === t);
+    });
+    try { localStorage.setItem(STORAGE_KEY, t); } catch(e){}
+  }
+
+  // Restaurar tema salvo
+  var saved = 'neon';
+  try { saved = localStorage.getItem(STORAGE_KEY) || 'neon'; } catch(e){}
+  applyTheme(saved);
+
+  // Toggle painel
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    panel.classList.toggle('open');
+  });
+
+  // Fechar ao clicar fora
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('#themeSwitcher')) panel.classList.remove('open');
+  });
+
+  // Selecionar tema
+  opts.forEach(function(o){
+    o.addEventListener('click', function(){
+      applyTheme(o.dataset.theme);
+      panel.classList.remove('open');
+    });
+  });
+})();
+</script>
 </body>
 </html>
